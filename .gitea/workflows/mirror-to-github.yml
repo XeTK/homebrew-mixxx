@@ -1,0 +1,52 @@
+name: Mirror to GitHub
+
+# Gitea is the source of truth. This pushes `main` to github.com/XeTK/homebrew-mixxx so
+# that `brew tap XeTK/mixxx` works for anyone, without credentials, and keeps working when
+# the homelab is down.
+#
+# Why a workflow and not a Gitea push mirror: Gitea 1.26's push-mirror API cannot set up
+# SSH authentication (no use_ssh field), and the HTTPS alternative needs a GitHub token that
+# can reach every XeTK repo. A deploy key only works on this one repository.
+#
+# Secret (Settings -> Actions -> Secrets): MIRROR_DEPLOY_KEY = private half of the write
+# deploy key registered on XeTK/homebrew-mixxx. Backup: ~/.creds homebrew_mixxx_mirror_deploy_key.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-to-github
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Push main to GitHub
+    runs-on: linux-x86
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitHub
+        env:
+          MIRROR_DEPLOY_KEY: ${{ secrets.MIRROR_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          [ -n "$MIRROR_DEPLOY_KEY" ] || { echo "MIRROR_DEPLOY_KEY is not set"; exit 1; }
+          umask 077
+          KEY="$(mktemp)"; KH="$(mktemp)"
+          trap 'rm -f "$KEY" "$KH"' EXIT
+          printf '%s\n' "$MIRROR_DEPLOY_KEY" > "$KEY"
+          # Host keys come from GitHub's own API over TLS, not trust-on-first-use. Port 443
+          # (ssh.github.com) because outbound 22 is often filtered.
+          curl -fsS https://api.github.com/meta | python3 -c \
+            'import json,sys; [print("[ssh.github.com]:443 "+k) for k in json.load(sys.stdin)["ssh_keys"]]' > "$KH"
+          [ -s "$KH" ] || { echo "could not fetch GitHub host keys"; exit 1; }
+          export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o UserKnownHostsFile=$KH -o StrictHostKeyChecking=yes"
+          # Force: the GitHub copy must always equal Gitea's main, even after history edits.
+          git push --force "ssh://git@ssh.github.com:443/XeTK/homebrew-mixxx.git" "HEAD:refs/heads/main"
+          echo "mirrored $(git rev-parse --short HEAD) to github.com/XeTK/homebrew-mixxx"
