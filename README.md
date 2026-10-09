@@ -27,3 +27,9 @@ The source of truth is <https://gitea.xetk.co.uk/xetk/homebrew-mixxx>. This GitH
 a read-only mirror, updated by `.gitea/workflows/mirror-to-github.yml` on every push to
 `main`, so that `brew tap` works anonymously. Do not push here directly: the next
 mirror run force-overwrites it.
+
+## Standards
+
+Follows [engineering-standards](https://gitea.xetk.co.uk/xetk/engineering-standards) **v1**, profiles: stack-defaults, homelab.
+
+Deviations are recorded in [`docs/decisions/`](docs/decisions/).
