@@ -1,0 +1,54 @@
+---
+# Tools come from `nix develop` (flake.nix); hooks run them from PATH.
+repos:
+  - repo: local
+    hooks:
+      - id: unittest
+        name: unit tests (100% line and branch coverage of tools/update_cask.py)
+        entry: >-
+          sh -c 'python3 -m coverage run --branch --include=tools/update_cask.py
+          -m unittest discover -s tools && python3 -m coverage report -m --fail-under=100'
+        language: system
+        files: ^tools/
+        pass_filenames: false
+      - id: cask-syntax
+        name: cask is valid ruby
+        entry: ruby -c
+        language: system
+        files: ^Casks/.*\.rb$
+      - id: actionlint
+        name: actionlint (workflows)
+        entry: actionlint -config-file .github/actionlint.yaml
+        language: system
+        files: ^\.gitea/workflows/
+      - id: nixfmt
+        name: nixfmt
+        entry: nixfmt --check
+        language: system
+        files: \.nix$
+      - id: statix
+        name: statix
+        entry: statix check .
+        language: system
+        files: \.nix$
+        pass_filenames: false
+      - id: deadnix
+        name: deadnix
+        entry: deadnix --fail
+        language: system
+        files: \.nix$
+      - id: yamllint
+        name: yamllint
+        entry: yamllint --strict
+        language: system
+        types: [yaml]
+      - id: markdownlint
+        name: markdownlint-cli2
+        entry: markdownlint-cli2
+        language: system
+        types: [markdown]
+      - id: gitleaks
+        name: gitleaks
+        entry: gitleaks git --pre-commit --staged --redact --no-banner
+        language: system
+        pass_filenames: false

@@ -1,3 +1,4 @@
+---
 name: Mirror to GitHub
 
 # Gitea is the source of truth. This pushes `main` to github.com/XeTK/homebrew-mixxx so
