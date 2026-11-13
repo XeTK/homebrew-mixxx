@@ -68,9 +68,21 @@ jobs:
           git fetch origin main
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
+      # ci-kit (xetk-infra/ci-kit) is not anonymously readable and the runner
+      # clones full-URL `uses:` actions without credentials, so check it out
+      # with the read-only CI_KIT_TOKEN and use the action from the workspace.
+      - name: Check out ci-kit
+        if: steps.commit.outputs.pushed == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: xetk-infra/ci-kit
+          ref: v1
+          token: ${{ secrets.CI_KIT_TOKEN }}
+          path: .ci-kit
+
       - name: Mirror to GitHub
         if: steps.commit.outputs.pushed == 'true'
-        uses: https://gitea.xetk.co.uk/xetk/ci-kit/github-mirror@v1
+        uses: ./.ci-kit/github-mirror
         with:
           repo: XeTK/homebrew-mixxx
           ssh-key: ${{ secrets.MIRROR_DEPLOY_KEY }}

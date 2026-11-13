@@ -4,8 +4,3 @@ self-hosted-runner:
   labels:
     - nixos
     - nixos-deploy
-paths:
-  .gitea/workflows/**/*.{yml,yaml}:
-    ignore:
-      # Gitea resolves full-URL action references (our ci-kit); GitHub's syntax does not.
-      - 'specifying action "https://gitea\.xetk\.co\.uk/.*" in invalid format'
