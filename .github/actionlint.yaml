@@ -1,0 +1,6 @@
+---
+# actionlint: our self-hosted runner labels (it checks .gitea/workflows via the hook).
+self-hosted-runner:
+  labels:
+    - nixos
+    - nixos-deploy

@@ -1,3 +1,4 @@
+---
 name: Mirror to GitHub
 
 # Gitea is the source of truth. This pushes `main` to github.com/XeTK/homebrew-mixxx so
@@ -35,11 +36,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      # ci-kit (xetk-infra/ci-kit) is not anonymously readable and the runner
+      # clones full-URL `uses:` actions without credentials, so check it out
+      # with the read-only CI_KIT_TOKEN and use the action from the workspace.
+      - name: Check out ci-kit
+        uses: actions/checkout@v4
+        with:
+          repository: xetk-infra/ci-kit
+          ref: v1
+          token: ${{ secrets.CI_KIT_TOKEN }}
+          path: .ci-kit
+
       # Push Gitea's main (not HEAD), so a manual dispatch from another branch can never
       # publish that branch as the tap's main. Force: the GitHub copy must always equal
       # Gitea's main, even after history edits.
       - name: Push to GitHub
-        uses: https://gitea.xetk.co.uk/xetk/ci-kit/github-mirror@v1
+        uses: ./.ci-kit/github-mirror
         with:
           repo: XeTK/homebrew-mixxx
           ssh-key: ${{ secrets.MIRROR_DEPLOY_KEY }}

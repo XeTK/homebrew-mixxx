@@ -1,0 +1,90 @@
+---
+name: Update cask
+
+# Keeps Casks/mixxx-fork.rb on the newest macOS build of the fork. Polls the
+# fork's signed update feed, checks the minisign signature against the key
+# the Mixxx app trusts (tools/update_cask.py), and commits the regenerated
+# cask to main when the build changed. See docs/decisions/0004.
+#
+# A push made with the Actions token does not start other workflows, so this
+# job mirrors to GitHub itself (same action and key as mirror-to-github.yml).
+#
+# Runs on nixos-deploy: it pushes to this repo and holds MIRROR_DEPLOY_KEY.
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: update-cask
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    name: Regenerate cask from the feed
+    runs-on: nixos-deploy
+    timeout-minutes: 15
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch the signed manifest
+        run: |
+          set -euo pipefail
+          feed=https://mixxx.xetk.co.uk/updates
+          curl -fsS --max-time 30 -o "$RUNNER_TEMP/latest.json" "$feed/latest.json"
+          curl -fsS --max-time 30 -o "$RUNNER_TEMP/latest.json.minisig" "$feed/latest.json.minisig"
+
+      - name: Regenerate the cask
+        id: cask
+        run: |
+          set -euo pipefail
+          result="$(nix develop --command python3 tools/update_cask.py \
+            --manifest "$RUNNER_TEMP/latest.json" \
+            --signature "$RUNNER_TEMP/latest.json.minisig" \
+            --out Casks/mixxx-fork.rb)"
+          echo "$result"
+          nix develop --command ruby -c Casks/mixxx-fork.rb
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+
+      - name: Commit to main
+        id: commit
+        if: steps.cask.outputs.result == 'changed'
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^  version "\(.*\)"$/\1/p' Casks/mixxx-fork.rb)"
+          git config user.name "homebrew-mixxx update-cask"
+          git config user.email "actions@gitea.xetk.co.uk"
+          git add Casks/mixxx-fork.rb
+          git commit -m "chore(cask): mixxx-fork ${version}"
+          git push origin HEAD:main
+          git fetch origin main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # ci-kit (xetk-infra/ci-kit) is not anonymously readable and the runner
+      # clones full-URL `uses:` actions without credentials, so check it out
+      # with the read-only CI_KIT_TOKEN and use the action from the workspace.
+      - name: Check out ci-kit
+        if: steps.commit.outputs.pushed == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: xetk-infra/ci-kit
+          ref: v1
+          token: ${{ secrets.CI_KIT_TOKEN }}
+          path: .ci-kit
+
+      - name: Mirror to GitHub
+        if: steps.commit.outputs.pushed == 'true'
+        uses: ./.ci-kit/github-mirror
+        with:
+          repo: XeTK/homebrew-mixxx
+          ssh-key: ${{ secrets.MIRROR_DEPLOY_KEY }}
+          refspecs: refs/remotes/origin/main:refs/heads/main
+          force: "true"
