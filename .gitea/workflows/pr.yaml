@@ -9,6 +9,6 @@ jobs:
   checks:
     runs-on: nixos
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Pre-commit (tests, lint, format, secrets)
         run: nix develop --command pre-commit run --all-files

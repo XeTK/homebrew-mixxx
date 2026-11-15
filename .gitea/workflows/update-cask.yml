@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -73,7 +73,7 @@ jobs:
       # with the read-only CI_KIT_TOKEN and use the action from the workspace.
       - name: Check out ci-kit
         if: steps.commit.outputs.pushed == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: xetk-infra/ci-kit
           ref: v1

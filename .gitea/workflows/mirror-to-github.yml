@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -40,7 +40,7 @@ jobs:
       # clones full-URL `uses:` actions without credentials, so check it out
       # with the read-only CI_KIT_TOKEN and use the action from the workspace.
       - name: Check out ci-kit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: xetk-infra/ci-kit
           ref: v1
